@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { CalendarDays, Brain, MessageSquare, Clock, Edit2, Check, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 interface ClienteDetalhesSheetProps {
@@ -43,10 +44,26 @@ export function ClienteDetalhesSheet({ contato, open, onOpenChange, onContatoUpd
     const [editedName, setEditedName] = useState("");
     const [isUpdatingName, setIsUpdatingName] = useState(false);
 
+    // States: Ficha Técnica
+    const [isEditingFicha, setIsEditingFicha] = useState(false);
+    const [isUpdatingFicha, setIsUpdatingFicha] = useState(false);
+    const [editedModeloBase, setEditedModeloBase] = useState("");
+    const [editedCorCabelo, setEditedCorCabelo] = useState("");
+    const [editedTipoFixacao, setEditedTipoFixacao] = useState("");
+    const [editedDataCompra, setEditedDataCompra] = useState("");
+
+    // States: Telefone
+    const [isEditingTelefone, setIsEditingTelefone] = useState(false);
+    const [editedTelefone, setEditedTelefone] = useState("");
+    const [isUpdatingTelefone, setIsUpdatingTelefone] = useState(false);
+
     useEffect(() => {
         if (contato && open) {
             setEditedName(contato.nome || "");
+            setEditedTelefone(contato.telefone || "");
             setIsEditingName(false);
+            setIsEditingTelefone(false);
+            setIsEditingFicha(false);
         }
     }, [contato, open]);
 
@@ -71,6 +88,65 @@ export function ClienteDetalhesSheet({ contato, open, onOpenChange, onContatoUpd
         }
     };
 
+    const handleSaveTelefone = async () => {
+        if (!contato || !editedTelefone.trim()) return;
+        setIsUpdatingTelefone(true);
+        try {
+            const { error } = await supabase
+                .from("contatos")
+                .update({ telefone: editedTelefone })
+                .eq("id", contato.id);
+            if (error) throw error;
+            toast.success("Telefone atualizado com sucesso");
+            setIsEditingTelefone(false);
+            contato.telefone = editedTelefone; // Optimistic update
+            if (onContatoUpdated) onContatoUpdated();
+        } catch (error) {
+            console.error("Erro ao atualizar telefone:", error);
+            toast.error("Erro ao atualizar telefone");
+        } finally {
+            setIsUpdatingTelefone(false);
+        }
+    };
+
+    const handleSaveFicha = async () => {
+        if (!contato) return;
+        setIsUpdatingFicha(true);
+        try {
+            // Upsert ficha_tecnica_protese
+            const { error } = await supabase
+                .from("ficha_tecnica_protese")
+                .upsert({
+                    contato_id: contato.id,
+                    modelo_base: editedModeloBase,
+                    cor_cabelo: editedCorCabelo,
+                    tipo_fixacao: editedTipoFixacao,
+                    data_ultima_compra_protese: editedDataCompra || null,
+                    atualizado_em: new Date().toISOString()
+                }, { onConflict: 'contato_id' });
+
+            if (error) throw error;
+            toast.success("Ficha técnica atualizada com sucesso");
+            setIsEditingFicha(false);
+
+            // Refetch details to update state
+            const { data: fichaData } = await supabase
+                .from("ficha_tecnica_protese")
+                .select("*")
+                .eq("contato_id", contato.id)
+                .single();
+
+            if (fichaData) {
+                setFichaTecnica(fichaData);
+            }
+        } catch (error) {
+            console.error("Erro ao atualizar ficha técnica:", error);
+            toast.error("Erro ao atualizar ficha técnica");
+        } finally {
+            setIsUpdatingFicha(false);
+        }
+    };
+
     useEffect(() => {
         async function fetchDetalhes() {
             if (!contato?.id) return;
@@ -85,8 +161,16 @@ export function ClienteDetalhesSheet({ contato, open, onOpenChange, onContatoUpd
 
             if (fichaData) {
                 setFichaTecnica(fichaData);
+                setEditedModeloBase(fichaData.modelo_base || "");
+                setEditedCorCabelo(fichaData.cor_cabelo || "");
+                setEditedTipoFixacao(fichaData.tipo_fixacao || "");
+                setEditedDataCompra(fichaData.data_ultima_compra_protese || "");
             } else {
                 setFichaTecnica(null);
+                setEditedModeloBase("");
+                setEditedCorCabelo("");
+                setEditedTipoFixacao("");
+                setEditedDataCompra("");
             }
 
             const { data: memData } = await supabase
@@ -153,9 +237,33 @@ export function ClienteDetalhesSheet({ contato, open, onOpenChange, onContatoUpd
                                     </Button>
                                 </div>
                             )}
-                            <SheetDescription className="flex items-center gap-2 text-base">
-                                {contato.telefone}
-                            </SheetDescription>
+                            {isEditingTelefone ? (
+                                <div className="flex items-center gap-2">
+                                    <Input
+                                        value={editedTelefone}
+                                        onChange={(e) => setEditedTelefone(e.target.value)}
+                                        className="h-8 text-base"
+                                        autoFocus
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter") handleSaveTelefone();
+                                            if (e.key === "Escape") setIsEditingTelefone(false);
+                                        }}
+                                    />
+                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-emerald-600 shrink-0" onClick={handleSaveTelefone} disabled={isUpdatingTelefone}>
+                                        <Check className="h-4 w-4" />
+                                    </Button>
+                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-500 shrink-0" onClick={() => setIsEditingTelefone(false)} disabled={isUpdatingTelefone}>
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            ) : (
+                                <SheetDescription className="flex items-center gap-2 text-base group/phone">
+                                    {contato.telefone}
+                                    <Button size="icon" variant="ghost" className="h-5 w-5 md:opacity-0 group-hover/phone:opacity-100 transition-opacity text-slate-400 hover:text-indigo-600" onClick={() => setIsEditingTelefone(true)}>
+                                        <Edit2 className="h-3 w-3" />
+                                    </Button>
+                                </SheetDescription>
+                            )}
                         </div>
                     </div>
 
@@ -184,36 +292,107 @@ export function ClienteDetalhesSheet({ contato, open, onOpenChange, onContatoUpd
                     ) : (
                         <>
                             {/* Card de Ficha Técnica */}
-                            <Card className="border-none shadow-sm dark:bg-zinc-900">
-                                <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                            <Card className="border-none shadow-sm dark:bg-zinc-900 overflow-hidden relative">
+                                <CardHeader className="pb-3 flex flex-row items-center justify-between z-10">
                                     <div className="flex items-center gap-2">
                                         <Edit2 className="h-5 w-5 text-indigo-500" />
                                         <CardTitle className="text-lg">Ficha Técnica</CardTitle>
                                     </div>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400">
-                                        <Edit2 className="h-4 w-4" />
-                                    </Button>
+                                    {!isEditingFicha ? (
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-slate-400 hover:text-indigo-600 transition-colors"
+                                            onClick={() => setIsEditingFicha(true)}
+                                        >
+                                            <Edit2 className="h-4 w-4" />
+                                        </Button>
+                                    ) : (
+                                        <div className="flex items-center gap-2">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-8 px-3 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 font-bold"
+                                                onClick={handleSaveFicha}
+                                                disabled={isUpdatingFicha}
+                                            >
+                                                {isUpdatingFicha ? "Salvando..." : "Salvar"}
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-8 px-3 text-slate-500 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-zinc-800"
+                                                onClick={() => setIsEditingFicha(false)}
+                                                disabled={isUpdatingFicha}
+                                            >
+                                                Cancelar
+                                            </Button>
+                                        </div>
+                                    )}
                                 </CardHeader>
                                 <Separator className="dark:bg-zinc-800" />
                                 <CardContent className="pt-4 grid sm:grid-cols-2 gap-4">
-                                    <div>
-                                        <span className="text-xs font-medium text-slate-500 dark:text-zinc-400 uppercase tracking-wider block mb-1">Modelo Base</span>
-                                        <p className="font-semibold text-slate-900 dark:text-zinc-100">{fichaTecnica?.modelo_base || "Não Registrado"}</p>
-                                    </div>
-                                    <div>
-                                        <span className="text-xs font-medium text-slate-500 dark:text-zinc-400 uppercase tracking-wider block mb-1">Cor do Cabelo</span>
-                                        <p className="font-semibold text-slate-900 dark:text-zinc-100">{fichaTecnica?.cor_cabelo || "Não Registrado"}</p>
-                                    </div>
-                                    <div>
-                                        <span className="text-xs font-medium text-slate-500 dark:text-zinc-400 uppercase tracking-wider block mb-1">Tipo de Fixação</span>
-                                        <p className="font-semibold text-slate-900 dark:text-zinc-100">{fichaTecnica?.tipo_fixacao || "Não Registrado"}</p>
-                                    </div>
-                                    <div>
-                                        <span className="text-xs font-medium text-slate-500 dark:text-zinc-400 uppercase tracking-wider block mb-1">Última Compra</span>
-                                        <p className="font-semibold text-slate-900 dark:text-zinc-100">
-                                            {fichaTecnica?.data_ultima_compra_protese ? new Date(fichaTecnica.data_ultima_compra_protese).toLocaleDateString("pt-BR") : "Não Registrado"}
-                                        </p>
-                                    </div>
+                                    {isEditingFicha ? (
+                                        <>
+                                            <div className="space-y-1.5">
+                                                <Label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Modelo Base</Label>
+                                                <Input
+                                                    value={editedModeloBase}
+                                                    onChange={(e) => setEditedModeloBase(e.target.value)}
+                                                    className="h-9"
+                                                    placeholder="Digite o modelo..."
+                                                />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Cor do Cabelo</Label>
+                                                <Input
+                                                    value={editedCorCabelo}
+                                                    onChange={(e) => setEditedCorCabelo(e.target.value)}
+                                                    className="h-9"
+                                                    placeholder="Digite a cor..."
+                                                />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Tipo de Fixação</Label>
+                                                <Input
+                                                    value={editedTipoFixacao}
+                                                    onChange={(e) => setEditedTipoFixacao(e.target.value)}
+                                                    className="h-9"
+                                                    placeholder="Ex: Fita, Cola..."
+                                                />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Última Compra</Label>
+                                                <Input
+                                                    type="date"
+                                                    value={editedDataCompra}
+                                                    onChange={(e) => setEditedDataCompra(e.target.value)}
+                                                    className="h-9"
+                                                />
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div>
+                                                <span className="text-xs font-medium text-slate-500 dark:text-zinc-400 uppercase tracking-wider block mb-1">Modelo Base</span>
+                                                <p className="font-semibold text-slate-900 dark:text-zinc-100">{fichaTecnica?.modelo_base || "Não Registrado"}</p>
+                                            </div>
+                                            <div>
+                                                <span className="text-xs font-medium text-slate-500 dark:text-zinc-400 uppercase tracking-wider block mb-1">Cor do Cabelo</span>
+                                                <p className="font-semibold text-slate-900 dark:text-zinc-100">{fichaTecnica?.cor_cabelo || "Não Registrado"}</p>
+                                            </div>
+                                            <div>
+                                                <span className="text-xs font-medium text-slate-500 dark:text-zinc-400 uppercase tracking-wider block mb-1">Tipo de Fixação</span>
+                                                <p className="font-semibold text-slate-900 dark:text-zinc-100">{fichaTecnica?.tipo_fixacao || "Não Registrado"}</p>
+                                            </div>
+                                            <div>
+                                                <span className="text-xs font-medium text-slate-500 dark:text-zinc-400 uppercase tracking-wider block mb-1">Última Compra</span>
+                                                <p className="font-semibold text-slate-900 dark:text-zinc-100">
+                                                    {fichaTecnica?.data_ultima_compra_protese ? new Date(fichaTecnica.data_ultima_compra_protese).toLocaleDateString("pt-BR") : "Não Registrado"}
+                                                </p>
+                                            </div>
+                                        </>
+                                    )}
                                 </CardContent>
                             </Card>
 

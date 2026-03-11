@@ -110,9 +110,10 @@ export default function ClientesPage() {
                 interesse_atual: "manutenção"
             });
             fetchClientes();
-        } catch (err) {
+        } catch (err: any) {
             console.error("Erro ao criar contato:", err);
-            toast.error("Erro ao tentar criar contato no banco de dados.");
+            const detail = err.message || err.details || "";
+            toast.error(`Erro ao criar contato: ${detail}`);
         }
         setIsSaving(false);
     };
@@ -132,12 +133,12 @@ export default function ClientesPage() {
 
                 <Dialog open={isNewContactOpen} onOpenChange={setIsNewContactOpen}>
                     <DialogTrigger asChild>
-                        <Button className="bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-white rounded-xl px-6 py-6 h-auto shadow-lg shadow-zinc-200 dark:shadow-none transition-all hover:scale-[1.02] active:scale-[0.98]">
+                        <Button className="w-full md:w-auto bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-white rounded-xl px-6 py-6 h-auto shadow-lg shadow-zinc-200 dark:shadow-none transition-all hover:scale-[1.02] active:scale-[0.98]">
                             <UserPlus className="mr-2 h-5 w-5" />
                             Novo Contato
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-md bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 rounded-xl">
+                    <DialogContent className="w-[95vw] max-w-md bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 rounded-xl overflow-y-auto max-h-[90vh]">
                         <DialogHeader>
                             <DialogTitle className="text-xl flex items-center gap-2 text-slate-900 dark:text-zinc-100">
                                 <UserPlus className="h-5 w-5 text-emerald-500" />
@@ -231,7 +232,7 @@ export default function ClientesPage() {
                         Listagem de todos os contatos capturados pela IA ou inseridos manualmente.
                     </CardDescription>
                 </CardHeader>
-                <CardContent className="p-0">
+                <CardContent className="p-0 overflow-x-auto">
                     {loading && clientes.length === 0 ? (
                         <Table>
                             <TableHeader className="bg-slate-50/50 dark:bg-zinc-800/30">
@@ -259,10 +260,10 @@ export default function ClientesPage() {
                                 <TableRow className="hover:bg-transparent border-none">
                                     <TableHead className="py-4 text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase px-6">Nome</TableHead>
                                     <TableHead className="py-4 text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase">Telefone</TableHead>
-                                    <TableHead className="py-4 text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase">Origem</TableHead>
-                                    <TableHead className="py-4 text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase">Fase do Funil</TableHead>
+                                    <TableHead className="hidden md:table-cell py-4 text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase">Origem</TableHead>
+                                    <TableHead className="hidden sm:table-cell py-4 text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase">Fase do Funil</TableHead>
                                     <TableHead className="py-4 text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase">Score</TableHead>
-                                    <TableHead className="py-4 text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase">Interesse</TableHead>
+                                    <TableHead className="hidden md:table-cell py-4 text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase">Interesse</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -277,8 +278,8 @@ export default function ClientesPage() {
                                     >
                                         <TableCell className="font-semibold text-slate-900 dark:text-zinc-100 px-6 py-4">{cliente.nome || "Novo Lead"}</TableCell>
                                         <TableCell className="font-medium text-slate-600 dark:text-zinc-400">{cliente.telefone}</TableCell>
-                                        <TableCell className="text-slate-500 dark:text-zinc-500 font-medium">{cliente.origem_lead || "-"}</TableCell>
-                                        <TableCell>
+                                        <TableCell className="hidden md:table-cell text-slate-500 dark:text-zinc-500 font-medium">{cliente.origem_lead || "-"}</TableCell>
+                                        <TableCell className="hidden sm:table-cell">
                                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 border border-slate-200 dark:border-zinc-700">
                                                 {cliente.fase_funil || "Não Definida"}
                                             </span>
@@ -290,7 +291,7 @@ export default function ClientesPage() {
                                                 {cliente.lead_score}
                                             </span>
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="hidden md:table-cell">
                                             {cliente.interesse_atual === "manutenção" ? (
                                                 <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/50 uppercase tracking-wider">
                                                     Manutenção
