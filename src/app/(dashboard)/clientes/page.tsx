@@ -51,6 +51,7 @@ export default function ClientesPage() {
     const [loading, setLoading] = useState(true);
     const [selectedContato, setSelectedContato] = useState<Contato | null>(null);
     const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const [funilOptions, setFunilOptions] = useState<string[]>([]);
 
     const [isNewContactOpen, setIsNewContactOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -77,8 +78,30 @@ export default function ClientesPage() {
         setLoading(false);
     };
 
+    const fetchFunilOptions = async () => {
+        try {
+            const { data, error } = await supabase.rpc('get_enum_values', { enum_type_name: 'lead_status' });
+            
+            if (error) {
+                // Fallback se a RPC não existir
+                const { data: rawData, error: rawError } = await supabase.from('contatos').select('fase_funil').limit(1);
+                console.warn("RPC get_enum_values não encontrada, usando fallback manual.");
+                setFunilOptions(['cliente_novo', 'cliente_recorrente']);
+                return;
+            }
+
+            if (data) {
+                setFunilOptions(data.map((item: any) => item.value));
+            }
+        } catch (err) {
+            console.error("Erro ao buscar opções do funil:", err);
+            setFunilOptions(['cliente_novo', 'cliente_recorrente']);
+        }
+    };
+
     useEffect(() => {
         fetchClientes();
+        fetchFunilOptions();
     }, []);
 
     const handleCreateContact = async () => {
@@ -194,8 +217,11 @@ export default function ClientesPage() {
                                         <SelectValue placeholder="Selecione a fase" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800">
-                                        <SelectItem value="cliente_novo">Cliente Novo</SelectItem>
-                                        <SelectItem value="cliente_recorrente">Cliente Recorrente</SelectItem>
+                                        {funilOptions.map((option) => (
+                                            <SelectItem key={option} value={option}>
+                                                {option.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
