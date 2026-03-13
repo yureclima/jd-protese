@@ -52,6 +52,11 @@ export default function ClientesPage() {
     const [selectedContato, setSelectedContato] = useState<Contato | null>(null);
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [funilOptions, setFunilOptions] = useState<string[]>([]);
+    
+    // Paginação
+    const [page, setPage] = useState(0);
+    const [totalCount, setTotalCount] = useState(0);
+    const pageSize = 10;
 
     const [isNewContactOpen, setIsNewContactOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -65,15 +70,24 @@ export default function ClientesPage() {
 
     const fetchClientes = async () => {
         setLoading(true);
-        const { data, error } = await supabase
+        
+        let query = supabase
             .from("contatos")
-            .select("*")
-            .order("ultima_interacao", { ascending: false });
+            .select("*", { count: "exact" });
+
+        if (searchTerm) {
+            query = query.or(`nome.ilike.%${searchTerm}%,telefone.ilike.%${searchTerm}%`);
+        }
+
+        const { data, error, count } = await query
+            .order("ultima_interacao", { ascending: false })
+            .range(page * pageSize, (page + 1) * pageSize - 1);
 
         if (error) {
             console.error("Erro ao buscar clientes:", error);
         } else {
             setClientes(data || []);
+            setTotalCount(count || 0);
         }
         setLoading(false);
     };
@@ -102,7 +116,16 @@ export default function ClientesPage() {
     useEffect(() => {
         fetchClientes();
         fetchFunilOptions();
-    }, []);
+    }, [page]);
+
+    // Resetar página ao buscar
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setPage(0);
+            fetchClientes();
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
 
     const handleCreateContact = async () => {
         if (!newContact.telefone || !newContact.nome) {
@@ -141,10 +164,7 @@ export default function ClientesPage() {
         setIsSaving(false);
     };
 
-    const filteredClientes = clientes.filter((cliente) =>
-        (cliente.nome?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-        cliente.telefone.includes(searchTerm)
-    );
+    const filteredClientes = clientes; // Já vem filtrado do banco
 
     return (
         <div className="flex flex-col gap-8">
@@ -249,11 +269,13 @@ export default function ClientesPage() {
             </div>
 
             <Card className="border-none shadow-sm bg-white dark:bg-zinc-900 overflow-hidden">
-                <CardHeader className="border-b border-slate-50 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-800/30">
-                    <CardTitle className="text-lg font-bold text-slate-900 dark:text-zinc-100">Base de Contatos</CardTitle>
-                    <CardDescription className="text-slate-500 dark:text-zinc-400">
-                        Listagem de todos os contatos capturados pela IA ou inseridos manualmente.
-                    </CardDescription>
+                <CardHeader className="border-b border-slate-50 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-800/30 flex flex-row items-center justify-between">
+                    <div>
+                        <CardTitle className="text-lg font-bold text-slate-900 dark:text-zinc-100">Base de Contatos</CardTitle>
+                        <CardDescription className="text-slate-500 dark:text-zinc-400">
+                            Total de <span className="text-emerald-600 font-bold">{totalCount}</span> contatos
+                        </CardDescription>
+                    </div>
                 </CardHeader>
                 <CardContent className="p-0 overflow-x-auto">
                     {loading && clientes.length === 0 ? (
@@ -338,6 +360,38 @@ export default function ClientesPage() {
                         </Table>
                     )}
                 </CardContent>
+                
+                {/* Controles de Paginação */}
+                <div className="border-t border-slate-50 dark:border-zinc-800 p-4 bg-slate-50/30 dark:bg-zinc-800/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <p className="text-sm text-slate-500 dark:text-zinc-400 font-medium">
+                        Mostrando <span className="text-slate-900 dark:text-zinc-200">{Math.min(totalCount, (page * pageSize) + 1)}</span>-
+                        <span className="text-slate-900 dark:text-zinc-200">{Math.min(totalCount, (page + 1) * pageSize)}</span> de <span className="font-bold text-emerald-600">{totalCount}</span> contatos
+                    </p>
+                    
+                    <div className="flex items-center gap-2">
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-700 h-9 px-4 rounded-xl shadow-sm text-xs font-bold transition-all active:scale-95"
+                            onClick={() => setPage(p => Math.max(0, p - 1))}
+                            disabled={page === 0 || loading}
+                        >
+                            Anterior
+                        </Button>
+                        <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 h-9 px-4 flex items-center justify-center rounded-xl min-w-[3.5rem] shadow-sm">
+                            <span className="text-xs font-bold text-slate-900 dark:text-zinc-100 italic">{page + 1}</span>
+                        </div>
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-700 h-9 px-4 rounded-xl shadow-sm text-xs font-bold transition-all active:scale-95"
+                            onClick={() => setPage(p => p + 1)}
+                            disabled={(page + 1) * pageSize >= totalCount || loading}
+                        >
+                            Próximo
+                        </Button>
+                    </div>
+                </div>
             </Card>
             <ClienteDetalhesSheet
                 contato={selectedContato}
