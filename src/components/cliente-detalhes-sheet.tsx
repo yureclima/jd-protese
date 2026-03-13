@@ -14,6 +14,13 @@ import { Separator } from "@/components/ui/separator";
 import { CalendarDays, Brain, MessageSquare, Clock, Edit2, Check, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 
 interface ClienteDetalhesSheetProps {
@@ -43,6 +50,9 @@ export function ClienteDetalhesSheet({ contato, open, onOpenChange, onContatoUpd
     const [isEditingName, setIsEditingName] = useState(false);
     const [editedName, setEditedName] = useState("");
     const [isUpdatingName, setIsUpdatingName] = useState(false);
+    const [funilOptions, setFunilOptions] = useState<string[]>([]);
+    const [isUpdatingFase, setIsUpdatingFase] = useState(false);
+    const [isUpdatingInteresse, setIsUpdatingInteresse] = useState(false);
 
     // States: Ficha Técnica
     const [isEditingFicha, setIsEditingFicha] = useState(false);
@@ -106,6 +116,46 @@ export function ClienteDetalhesSheet({ contato, open, onOpenChange, onContatoUpd
             toast.error("Erro ao atualizar telefone");
         } finally {
             setIsUpdatingTelefone(false);
+        }
+    };
+
+    const handleUpdateFase = async (novaFase: string) => {
+        if (!contato) return;
+        setIsUpdatingFase(true);
+        try {
+            const { error } = await supabase
+                .from("contatos")
+                .update({ fase_funil: novaFase })
+                .eq("id", contato.id);
+            if (error) throw error;
+            toast.success("Fase do funil atualizada");
+            contato.fase_funil = novaFase;
+            if (onContatoUpdated) onContatoUpdated();
+        } catch (error) {
+            console.error("Erro ao atualizar fase:", error);
+            toast.error("Erro ao atualizar fase");
+        } finally {
+            setIsUpdatingFase(false);
+        }
+    };
+
+    const handleUpdateInteresse = async (novoInteresse: string) => {
+        if (!contato) return;
+        setIsUpdatingInteresse(true);
+        try {
+            const { error } = await supabase
+                .from("contatos")
+                .update({ interesse_atual: novoInteresse })
+                .eq("id", contato.id);
+            if (error) throw error;
+            toast.success("Interesse atualizado");
+            contato.interesse_atual = novoInteresse;
+            if (onContatoUpdated) onContatoUpdated();
+        } catch (error) {
+            console.error("Erro ao atualizar interesse:", error);
+            toast.error("Erro ao atualizar interesse");
+        } finally {
+            setIsUpdatingInteresse(false);
         }
     };
 
@@ -188,8 +238,22 @@ export function ClienteDetalhesSheet({ contato, open, onOpenChange, onContatoUpd
             setLoadingDetalhes(false);
         }
 
+        async function fetchFunilOptions() {
+            try {
+                const { data, error } = await supabase.rpc('get_enum_values', { enum_type_name: 'lead_status' });
+                if (data) {
+                    setFunilOptions(data.map((item: any) => item.value));
+                } else {
+                    setFunilOptions(['cliente_novo', 'cliente_recorrente']);
+                }
+            } catch (err) {
+                setFunilOptions(['cliente_novo', 'cliente_recorrente']);
+            }
+        }
+
         if (open && contato) {
             fetchDetalhes();
+            fetchFunilOptions();
         }
     }, [open, contato]);
 
@@ -267,18 +331,41 @@ export function ClienteDetalhesSheet({ contato, open, onOpenChange, onContatoUpd
                         </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-2 pt-2">
+                    <div className="flex flex-wrap gap-2 pt-2 items-center">
                         <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${getScoreVariant(contato.lead_score)}`}>
                             Score: {contato.lead_score}
                         </span>
-                        <span className="inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold bg-slate-200 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 border border-slate-300 dark:border-zinc-700">
-                            {contato.fase_funil === "cliente_novo" ? "Novo" : contato.fase_funil === "cliente_recorrente" ? "Recorrente" : (contato.fase_funil || "Não Definida")}
-                        </span>
-                        {contato.interesse_atual && (
-                            <span className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider ${contato.interesse_atual === "manutenção" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-900/50" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50"}`}>
-                                {contato.interesse_atual}
-                            </span>
-                        )}
+                        
+                        <Select 
+                            value={contato.fase_funil || "cliente_novo"} 
+                            onValueChange={handleUpdateFase}
+                            disabled={isUpdatingFase}
+                        >
+                            <SelectTrigger className="h-7 w-auto min-w-[120px] px-3 py-1 bg-slate-200 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 border border-slate-300 dark:border-zinc-700 text-xs font-bold rounded-lg focus:ring-0">
+                                <SelectValue placeholder="Fase" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800">
+                                {funilOptions.map((option) => (
+                                    <SelectItem key={option} value={option}>
+                                        {option.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
+                        <Select 
+                            value={contato.interesse_atual || "manutenção"} 
+                            onValueChange={handleUpdateInteresse}
+                            disabled={isUpdatingInteresse}
+                        >
+                            <SelectTrigger className={`h-7 w-auto min-w-[120px] px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-lg focus:ring-0 ${contato.interesse_atual === "manutenção" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-900/50" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50"}`}>
+                                <SelectValue placeholder="Interesse" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800">
+                                <SelectItem value="manutenção">Manutenção</SelectItem>
+                                <SelectItem value="comprar">Adquirir</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
                 </SheetHeader>
 
