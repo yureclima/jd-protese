@@ -363,7 +363,7 @@ export function ClienteDetalhesSheet({ contato, open, onOpenChange, onContatoUpd
                             </SelectTrigger>
                             <SelectContent className="bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800">
                                 <SelectItem value="manutenção">Manutenção</SelectItem>
-                                <SelectItem value="comprar">Adquirir</SelectItem>
+                                <SelectItem value="adquirir">Adquirir</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>

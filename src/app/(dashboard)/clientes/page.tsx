@@ -206,7 +206,7 @@ export default function ClientesPage() {
                                     </SelectTrigger>
                                     <SelectContent className="bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800">
                                         <SelectItem value="manutenção">Manutenção de Prótese</SelectItem>
-                                        <SelectItem value="comprar">Adquirir Nova Prótese</SelectItem>
+                                        <SelectItem value="adquirir">Adquirir Nova Prótese</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
