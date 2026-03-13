@@ -58,7 +58,7 @@ export default function ClientesPage() {
         nome: "",
         telefone: "55",
         origem_lead: "Manual (CRM)",
-        fase_funil: "Triagem",
+        fase_funil: "cliente_novo",
         interesse_atual: "manutenção"
     });
 
@@ -106,7 +106,7 @@ export default function ClientesPage() {
                 nome: "",
                 telefone: "55",
                 origem_lead: "Manual (CRM)",
-                fase_funil: "Triagem",
+                fase_funil: "cliente_novo",
                 interesse_atual: "manutenção"
             });
             fetchClientes();
@@ -194,11 +194,8 @@ export default function ClientesPage() {
                                         <SelectValue placeholder="Selecione a fase" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-white dark:bg-zinc-950 border-slate-200 dark:border-zinc-800">
-                                        <SelectItem value="Triagem">Triagem Inicial</SelectItem>
-                                        <SelectItem value="Agendamento Solicitado">Agendamento Solicitado</SelectItem>
-                                        <SelectItem value="Qualificado">Qualificado (Com interesse)</SelectItem>
-                                        <SelectItem value="Cliente Ativo">Cliente Ativo</SelectItem>
-                                        <SelectItem value="Follow-up">Aguardando Follow-up</SelectItem>
+                                        <SelectItem value="cliente_novo">Cliente Novo</SelectItem>
+                                        <SelectItem value="cliente_recorrente">Cliente Recorrente</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -281,7 +278,7 @@ export default function ClientesPage() {
                                         <TableCell className="hidden md:table-cell text-slate-500 dark:text-zinc-500 font-medium">{cliente.origem_lead || "-"}</TableCell>
                                         <TableCell className="hidden sm:table-cell">
                                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 border border-slate-200 dark:border-zinc-700">
-                                                {cliente.fase_funil || "Não Definida"}
+                                                {cliente.fase_funil === "cliente_novo" ? "Novo" : cliente.fase_funil === "cliente_recorrente" ? "Recorrente" : (cliente.fase_funil || "Não Definida")}
                                             </span>
                                         </TableCell>
                                         <TableCell>

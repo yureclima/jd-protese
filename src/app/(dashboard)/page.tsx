@@ -26,11 +26,11 @@ export default async function DashboardHome() {
     .select('*', { count: 'exact', head: true })
     .gte('created_at', dataUmaSemanaAtras.toISOString());
 
-  // Follow-up Pendente (Definição: interesse_atual indica ou fase_funil pendente. Usamos fase="Follow-up")
+  // Follow-up Pendente (Ajustado para evitar erro de ENUM após mudança no banco)
   const { count: followUpCount } = await supabase
     .from('contatos')
     .select('*', { count: 'exact', head: true })
-    .eq('fase_funil', 'Follow-up');
+    .is('fase_funil', null);
 
   // Atividade Recente (IA) - Últimos 4 contatos atualizados
   const { data: contatosRecentes } = await supabase
@@ -194,7 +194,7 @@ export default async function DashboardHome() {
                         </TableCell>
                         <TableCell className="text-right px-6">
                           <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 uppercase tracking-tight">
-                            {contato.fase_funil || "Pendente"}
+                            {contato.fase_funil === "cliente_novo" ? "Novo" : contato.fase_funil === "cliente_recorrente" ? "Recorrente" : (contato.fase_funil || "Pendente")}
                           </span>
                         </TableCell>
                       </TableRow>

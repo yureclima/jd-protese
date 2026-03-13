@@ -272,7 +272,7 @@ export function ClienteDetalhesSheet({ contato, open, onOpenChange, onContatoUpd
                             Score: {contato.lead_score}
                         </span>
                         <span className="inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold bg-slate-200 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 border border-slate-300 dark:border-zinc-700">
-                            {contato.fase_funil || "Fase Indefinida"}
+                            {contato.fase_funil === "cliente_novo" ? "Novo" : contato.fase_funil === "cliente_recorrente" ? "Recorrente" : (contato.fase_funil || "Não Definida")}
                         </span>
                         {contato.interesse_atual && (
                             <span className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider ${contato.interesse_atual === "manutenção" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-900/50" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50"}`}>
