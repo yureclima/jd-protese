@@ -169,14 +169,26 @@ export default function AgendaPage() {
 
                 const res = await fetchSlots(selectedEventId, startStr.toISOString(), endStr.toISOString());
 
+                if (res.error) {
+                    toast.error(`Aviso: ${res.error}`);
+                    console.error("fetchSlots Error:", res.error);
+                }
+
                 if (res.data) {
                     const dateKey = startStr.toISOString().split('T')[0];
-                    const daySlots = res.data[dateKey] || res.data || [];
-                    const timeStrings = Array.isArray(daySlots) ? daySlots.map((s: any) => format(new Date(s.time || s.slotTime || s), "HH:mm")) : [];
+                    // Tenta achar a chave exata da data. Na API V2, às vezes retorna um array direto de slots.
+                    const daySlots = res.data[dateKey] || res.data?.slots || res.data || [];
+                    
+                    // Se for um array puro, formatamos. Se for um objeto com a chave, iteramos.
+                    const slotsArray = Array.isArray(daySlots) ? daySlots : (daySlots[dateKey] ? daySlots[dateKey] : []);
+                    const timeStrings = Array.isArray(slotsArray) ? slotsArray.map((s: any) => format(new Date(s.time || s.slotTime || s), "HH:mm")) : [];
                     setSlots(timeStrings);
+                } else {
+                    setSlots([]);
                 }
             } catch (err) {
                 console.error("Erro ao carregar os horários", err);
+                toast.error("Erro de comunicação ao carregar vagas.");
                 setSlots([]);
             }
             setLoadingSlots(false);
@@ -199,11 +211,18 @@ export default function AgendaPage() {
 
                 const res = await fetchSlots(bookingToReschedule?.eventTypeId?.toString() || "", startStr.toISOString(), endStr.toISOString());
 
+                if (res.error) {
+                    console.error("fetchSlots Error reagendar:", res.error);
+                }
+
                 if (res.data) {
                     const dateKey = startStr.toISOString().split('T')[0];
-                    const daySlots = res.data[dateKey] || res.data || [];
-                    const timeStrings = Array.isArray(daySlots) ? daySlots.map((s: any) => format(new Date(s.time || s.slotTime || s), "HH:mm")) : [];
+                    const daySlots = res.data[dateKey] || res.data?.slots || res.data || [];
+                    const slotsArray = Array.isArray(daySlots) ? daySlots : (daySlots[dateKey] ? daySlots[dateKey] : []);
+                    const timeStrings = Array.isArray(slotsArray) ? slotsArray.map((s: any) => format(new Date(s.time || s.slotTime || s), "HH:mm")) : [];
                     setRescheduleSlots(timeStrings);
+                } else {
+                    setRescheduleSlots([]);
                 }
             } catch (err) {
                 console.error("Erro ao carregar os horários (Reagendar)", err);
