@@ -3,12 +3,21 @@
 import { createClient } from "@/lib/supabase/server";
 
 export async function getCalApiKey() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) return null;
 
-  const { data } = await supabase.from('profiles').select('cal_api_key').eq('id', user.id).single();
-  return data?.cal_api_key || null;
+    const { data, error } = await supabase.from('profiles').select('cal_api_key').eq('id', user.id).maybeSingle();
+    if (error) {
+        console.error("Erro ao buscar perfil:", error);
+        return null;
+    }
+    return data?.cal_api_key || null;
+  } catch (err) {
+    console.error("Erro crítico em getCalApiKey:", err);
+    return null;
+  }
 }
 
 export async function fetchEventTypes() {
@@ -25,13 +34,18 @@ export async function fetchEventTypes() {
     });
     
     if (!res.ok) {
-        throw new Error(`Failed to fetch event types: ${res.statusText}`);
+        let errorMsg = `Error ${res.status}: ${res.statusText}`;
+        try {
+            const errorData = await res.json();
+            errorMsg = errorData.message || errorMsg;
+        } catch {}
+        throw new Error(errorMsg);
     }
     const data = await res.json();
     return { data: data?.data || data };
   } catch (error: any) {
-    console.error("Cal.com fetch error:", error);
-    return { error: error.message };
+    console.error("Cal.com fetchEventTypes error:", error);
+    return { error: error.message || "Erro desconhecido ao buscar serviços" };
   }
 }
 
@@ -49,13 +63,18 @@ export async function fetchBookings() {
     });
     
     if (!res.ok) {
-        throw new Error(`Failed to fetch bookings: ${res.statusText}`);
+        let errorMsg = `Error ${res.status}: ${res.statusText}`;
+        try {
+            const errorData = await res.json();
+            errorMsg = errorData.message || errorMsg;
+        } catch {}
+        throw new Error(errorMsg);
     }
     const data = await res.json();
     return { data: data?.data || data?.bookings || data };
   } catch (error: any) {
-    console.error("Cal.com fetch error:", error);
-    return { error: error.message };
+    console.error("Cal.com fetchBookings error:", error);
+    return { error: error.message || "Erro desconhecido ao buscar agendamentos" };
   }
 }
 
@@ -74,13 +93,18 @@ export async function fetchSlots(eventTypeId: string, startTime: string, endTime
     });
     
     if (!res.ok) {
-        throw new Error(`Failed to fetch slots: ${res.statusText}`);
+        let errorMsg = `Error ${res.status}: ${res.statusText}`;
+        try {
+            const errorData = await res.json();
+            errorMsg = errorData.message || errorMsg;
+        } catch {}
+        throw new Error(errorMsg);
     }
     const data = await res.json();
     return { data: data?.data || data?.slots || data };
   } catch (error: any) {
-    console.error("Cal.com fetch error:", error);
-    return { error: error.message };
+    console.error("Cal.com fetchSlots error:", error);
+    return { error: error.message || "Erro desconhecido ao buscar horários" };
   }
 }
 

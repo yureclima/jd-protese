@@ -53,7 +53,9 @@ export default async function DashboardHome() {
         }
       });
       const calData = await res.json();
-      const bookingsData = calData?.data || calData?.status === 'success' ? calData.data : calData.bookings;
+      const bookingsData = Array.isArray(calData?.data) ? calData.data : 
+                           Array.isArray(calData?.bookings) ? calData.bookings : 
+                           Array.isArray(calData) ? calData : null;
       if (bookingsData) {
 
         // Contar Agendamentos Confirmados para Hoje
