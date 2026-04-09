@@ -28,21 +28,27 @@ export async function fetchEventTypes() {
     const res = await fetch(`https://api.cal.com/v2/event-types`, {
       headers: {
         "Authorization": `Bearer ${apiKey}`,
-        "cal-api-version": "2024-08-13" // Current stable version required by V2
+        "cal-api-version": "2024-06-14" // Versão V2 correta para eventos
       },
       next: { revalidate: 60 } // cache for 1 minute
     });
     
     if (!res.ok) {
-        let errorMsg = `Error ${res.status}: ${res.statusText}`;
-        try {
-            const errorData = await res.json();
-            errorMsg = errorData.message || errorMsg;
-        } catch {}
-        throw new Error(errorMsg);
+        // FALLBACK V1 - Alguns planos base recusam V2 de leitura
+        const resV1 = await fetch(`https://api.cal.com/v1/event-types?apiKey=${apiKey}`, { next: { revalidate: 60 } });
+        if (!resV1.ok) {
+            let errorMsg = `Error ${resV1.status}: ${resV1.statusText}`;
+            try {
+                const errorData = await resV1.json();
+                errorMsg = errorData.message || errorMsg;
+            } catch {}
+            throw new Error(errorMsg);
+        }
+        const dataV1 = await resV1.json();
+        return { data: dataV1?.eventTypes || dataV1?.event_types || dataV1?.data || dataV1 };
     }
     const data = await res.json();
-    return { data: data?.data || data };
+    return { data: data?.eventTypes || data?.event_types || data?.data || data };
   } catch (error: any) {
     console.error("Cal.com fetchEventTypes error:", error);
     return { error: error.message || "Erro desconhecido ao buscar serviços" };
@@ -63,12 +69,17 @@ export async function fetchBookings() {
     });
     
     if (!res.ok) {
-        let errorMsg = `Error ${res.status}: ${res.statusText}`;
-        try {
-            const errorData = await res.json();
-            errorMsg = errorData.message || errorMsg;
-        } catch {}
-        throw new Error(errorMsg);
+        const resV1 = await fetch(`https://api.cal.com/v1/bookings?apiKey=${apiKey}`, { next: { revalidate: 60 } });
+        if (!resV1.ok) {
+            let errorMsg = `Error ${resV1.status}: ${resV1.statusText}`;
+            try {
+                const errorData = await resV1.json();
+                errorMsg = errorData.message || errorMsg;
+            } catch {}
+            throw new Error(errorMsg);
+        }
+        const dataV1 = await resV1.json();
+        return { data: dataV1?.bookings || dataV1?.data || dataV1 };
     }
     const data = await res.json();
     return { data: data?.data || data?.bookings || data };
@@ -93,12 +104,17 @@ export async function fetchSlots(eventTypeId: string, startTime: string, endTime
     });
     
     if (!res.ok) {
-        let errorMsg = `Error ${res.status}: ${res.statusText}`;
-        try {
-            const errorData = await res.json();
-            errorMsg = errorData.message || errorMsg;
-        } catch {}
-        throw new Error(errorMsg);
+        const resV1 = await fetch(`https://api.cal.com/v1/slots?apiKey=${apiKey}&eventTypeId=${eventTypeId}&startTime=${startTime}&endTime=${endTime}`, { cache: "no-store" });
+        if (!resV1.ok) {
+            let errorMsg = `Error ${resV1.status}: ${resV1.statusText}`;
+            try {
+                const errorData = await resV1.json();
+                errorMsg = errorData.message || errorMsg;
+            } catch {}
+            throw new Error(errorMsg);
+        }
+        const dataV1 = await resV1.json();
+        return { data: dataV1?.slots || dataV1?.data || dataV1 };
     }
     const data = await res.json();
     return { data: data?.data || data?.slots || data };

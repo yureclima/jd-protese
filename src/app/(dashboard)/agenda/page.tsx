@@ -111,8 +111,11 @@ export default function AgendaPage() {
                     duration: e.length || e.lengthInMinutes || e.duration || 30,
                     price: (e.price !== undefined && e.price !== null) ? `R$ ${e.price / 100}` : "Padrão",
                 })));
+            } else if (!resEvents.error) {
+                console.warn("Formato de serviços não reconhecido pela API:", resEvents);
+                setEventTypes([]);
             } else {
-                console.warn("Formato de serviços não reconhecido:", resEvents.data);
+                setEventTypes([]);
             }
 
             const resBookings = await fetchBookings();
