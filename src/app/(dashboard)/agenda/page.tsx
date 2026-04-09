@@ -261,15 +261,19 @@ export default function AgendaPage() {
             const payload = {
                 eventTypeId: parseInt(selectedEventId, 10),
                 start: startDateTime.toISOString(),
-                responses: {
+                attendee: {
                     name: selectedCliente.nome || "Cliente JD",
                     email: selectedCliente.email || `${formattedPhone.replace(/\D/g, '')}@jdprotese.com`,
-                    phone: formattedPhone || "",
-                    attendeePhoneNumber: formattedPhone || "",
+                    timeZone: "America/Sao_Paulo",
+                    language: "pt-BR"
                 },
-                metadata: { supabase_id: selectedClienteId },
-                timeZone: "America/Sao_Paulo",
-                language: "pt-BR"
+                location: {
+                    type: "phone"
+                },
+                metadata: { 
+                    supabase_id: selectedClienteId,
+                    phone: formattedPhone
+                }
             };
 
             const response = await createBooking(payload);

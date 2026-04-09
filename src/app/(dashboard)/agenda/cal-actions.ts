@@ -94,15 +94,29 @@ export async function fetchSlots(eventTypeId: string, startTime: string, endTime
   if (!apiKey) return { error: "API Key não encontrada" };
 
   try {
-    // For V2 slots we must pass the params either as query params
-    const res = await fetch(`https://api.cal.com/v2/slots?eventTypeId=${eventTypeId}&startTime=${startTime}&endTime=${endTime}`, {
+    // A V2 exige buscar as vagas disponíveis em /v2/slots/available
+    // e de acordo com as refs, as variáveis são startTime e endTime em ISO 8601
+    const v2Url = `https://api.cal.com/v2/slots/available?eventTypeId=${eventTypeId}&startTime=${startTime}&endTime=${endTime}`;
+
+    let res = await fetch(v2Url, {
       headers: {
         "Authorization": `Bearer ${apiKey}`,
-        "cal-api-version": "2024-08-13"
+        "cal-api-version": "2024-08-13" 
       },
       cache: "no-store"
     });
     
+    // Fallback documentado: algumas contas aceitam api version de setembro
+    if (!res.ok) {
+        res = await fetch(v2Url, {
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "cal-api-version": "2024-09-04" 
+          },
+          cache: "no-store"
+        });
+    }
+
     if (!res.ok) {
         const resV1 = await fetch(`https://api.cal.com/v1/slots?apiKey=${apiKey}&eventTypeId=${eventTypeId}&startTime=${startTime}&endTime=${endTime}`, { cache: "no-store" });
         if (!resV1.ok) {
