@@ -46,13 +46,20 @@ export default async function DashboardHome() {
 
   if (calApiKey) {
     try {
-      const res = await fetch(`https://api.cal.com/v2/bookings`, {
+      let res = await fetch(`https://api.cal.com/v2/bookings`, {
         headers: {
           "Authorization": `Bearer ${calApiKey}`,
           "cal-api-version": "2024-08-13"
-        }
+        },
+        next: { revalidate: 60 }
       });
-      const calData = await res.json();
+      let calData = await res.json();
+      
+      if (!res.ok) {
+        res = await fetch(`https://api.cal.com/v1/bookings?apiKey=${calApiKey}`, { next: { revalidate: 60 } });
+        calData = await res.json();
+      }
+
       const bookingsData = Array.isArray(calData?.data) ? calData.data : 
                            Array.isArray(calData?.bookings) ? calData.bookings : 
                            Array.isArray(calData) ? calData : null;
