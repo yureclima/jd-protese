@@ -60,7 +60,7 @@ export default function AgendaPage() {
     const [slots, setSlots] = useState<string[]>([]);
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [searchBookings, setSearchBookings] = useState("");
-    const [selectedYear, setSelectedYear] = useState<string>("all");
+    const [statusFilter, setStatusFilter] = useState("agendados");
     const [isCanceling, setIsCanceling] = useState<string | null>(null);
     const [bookingToCancel, setBookingToCancel] = useState<Booking | null>(null);
 
@@ -126,15 +126,18 @@ export default function AgendaPage() {
             }
 
             let newBookings: Booking[] = [];
-            const mapBooking = (b: any) => ({
-                id: b.id,
-                client: b.attendees?.[0]?.name || b.responses?.name || "Cliente",
-                service: b.title || "Agendamento",
-                date: new Date(b.startTime || b.start),
-                status: b.status === "ACCEPTED" ? "Confirmado" : b.status === "PENDING" ? "Pendente" : "Cancelado",
-                uid: b.uid,
-                eventTypeId: b.eventType?.id || b.eventTypeId
-            });
+            const mapBooking = (b: any) => {
+                const st = b.status?.toUpperCase();
+                return {
+                    id: b.id,
+                    client: b.attendees?.[0]?.name || b.responses?.name || "Cliente",
+                    service: b.title || "Agendamento",
+                    date: new Date(b.startTime || b.start),
+                    status: st === "ACCEPTED" ? "Confirmado" : st === "PENDING" ? "Pendente" : "Cancelado",
+                    uid: b.uid,
+                    eventTypeId: b.eventType?.id || b.eventTypeId
+                }
+            };
 
             // Flexibilidade para lista de bookings
             const rawBookings = resBookings.data?.bookings || (Array.isArray(resBookings.data) ? resBookings.data : null);
@@ -359,14 +362,11 @@ export default function AgendaPage() {
     const filteredBookings = bookings.filter(b => {
         const matchesSearch = b.client.toLowerCase().includes(searchBookings.toLowerCase()) ||
             b.service.toLowerCase().includes(searchBookings.toLowerCase());
-        const matchesYear = selectedYear === "all" || b.date.getFullYear().toString() === selectedYear;
-        return matchesSearch && matchesYear;
-    });
-
-    const getAvailableYears = () => {
-        const years = Array.from(new Set(bookings.map(b => b.date.getFullYear().toString())));
-        return years.sort((a, b) => parseInt(b) - parseInt(a));
-    };
+        const matchesStatus = statusFilter === "all" ? true :
+                              statusFilter === "agendados" ? (b.status === "Confirmado" || b.status === "Pendente") :
+                              b.status === "Cancelado";
+        return matchesSearch && matchesStatus;
+    }).sort((a, b) => b.date.getTime() - a.date.getTime()); // +recentes no topo
 
     return (
         <div className="flex flex-col gap-8">
@@ -520,15 +520,14 @@ export default function AgendaPage() {
                                     </div>
 
                                     <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
-                                        <Select value={selectedYear} onValueChange={setSelectedYear}>
-                                            <SelectTrigger className="h-10 w-full sm:w-32 bg-slate-50 dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 rounded-xl">
-                                                <SelectValue placeholder="Ano" />
+                                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                            <SelectTrigger className="h-10 w-full sm:w-[180px] bg-slate-50 dark:bg-zinc-950 border-slate-200 dark:border-zinc-800 rounded-xl">
+                                                <SelectValue placeholder="Status" />
                                             </SelectTrigger>
                                             <SelectContent className="rounded-xl border-slate-200 dark:border-zinc-800 dark:bg-zinc-950">
+                                                <SelectItem value="agendados">Agendados (+Recentes)</SelectItem>
+                                                <SelectItem value="Cancelados">Cancelados</SelectItem>
                                                 <SelectItem value="all">Todos</SelectItem>
-                                                {getAvailableYears().map(year => (
-                                                    <SelectItem key={year} value={year}>{year}</SelectItem>
-                                                ))}
                                             </SelectContent>
                                         </Select>
 

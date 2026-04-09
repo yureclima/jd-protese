@@ -60,8 +60,9 @@ export default async function DashboardHome() {
 
         // Contar Agendamentos Confirmados para Hoje
         const todaysBookings = bookingsData.filter((b: any) => {
-          if (b.status !== "ACCEPTED" && b.status !== "PENDING") return false;
-          return isToday(parseISO(b.startTime));
+          const st = b.status?.toUpperCase();
+          if (st !== "ACCEPTED" && st !== "PENDING") return false;
+          return isToday(parseISO(b.start || b.startTime));
         });
         agendamentosHojeCount = todaysBookings.length;
         if (agendamentosHojeCount > 0) {
@@ -70,13 +71,14 @@ export default async function DashboardHome() {
 
         // Preparar "Últimos Agendamentos" (Próximos)
         const futureBookings = bookingsData.filter((b: any) => {
-          if (b.status !== "ACCEPTED" && b.status !== "PENDING") return false;
-          return isFuture(parseISO(b.startTime)) || isToday(parseISO(b.startTime));
-        }).sort((a: any, b: any) => parseISO(a.startTime).getTime() - parseISO(b.startTime).getTime())
+          const st = b.status?.toUpperCase();
+          if (st !== "ACCEPTED" && st !== "PENDING") return false;
+          return isFuture(parseISO(b.start || b.startTime)) || isToday(parseISO(b.start || b.startTime));
+        }).sort((a: any, b: any) => parseISO(a.start || a.startTime).getTime() - parseISO(b.start || b.startTime).getTime())
           .slice(0, 5);
 
         bookingsDisplay = futureBookings.map((b: any) => {
-          const dateObj = parseISO(b.startTime);
+          const dateObj = parseISO(b.start || b.startTime);
           const isHoje = isToday(dateObj);
 
           let dateStr = "";
@@ -89,11 +91,12 @@ export default async function DashboardHome() {
           const name = b.responses?.name || b.attendees?.[0]?.name || "Cliente Vazio";
           const init = name.split(" ").slice(0, 2).map((n: string) => n[0]).join("").toUpperCase();
 
+          const st = b.status?.toUpperCase();
           return {
             name: name,
             service: b.title,
-            status: b.status === "ACCEPTED" ? "Confirmado" : "Pendente",
-            statusColor: b.status === "ACCEPTED" ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400",
+            status: st === "ACCEPTED" ? "Confirmado" : "Pendente",
+            statusColor: st === "ACCEPTED" ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400",
             date: dateStr,
             initials: init
           };
