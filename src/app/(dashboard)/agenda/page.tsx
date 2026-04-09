@@ -34,6 +34,7 @@ interface EventType {
     title: string;
     duration: number;
     price: string;
+    locations?: any[];
 }
 
 interface Booking {
@@ -110,6 +111,7 @@ export default function AgendaPage() {
                     title: e.title || e.name || "Serviço",
                     duration: e.length || e.lengthInMinutes || e.duration || 30,
                     price: (e.price !== undefined && e.price !== null) ? `R$ ${e.price / 100}` : "Padrão",
+                    locations: e.locations || [],
                 })));
             } else if (!resEvents.error) {
                 console.warn("Formato de serviços não reconhecido pela API:", resEvents);
@@ -258,6 +260,15 @@ export default function AgendaPage() {
                 formattedPhone = "+5511999999999";
             }
 
+            const evData = eventTypes.find(e => e.id.toString() === selectedEventId.toString());
+            let locationPayload: any = { type: "inPerson" };
+            if (evData && evData.locations && evData.locations.length > 0) {
+                locationPayload = { type: evData.locations[0].type };
+                if (locationPayload.type === "phone") {
+                    locationPayload.value = formattedPhone;
+                }
+            }
+
             const payload = {
                 eventTypeId: parseInt(selectedEventId, 10),
                 start: startDateTime.toISOString(),
@@ -265,13 +276,10 @@ export default function AgendaPage() {
                     name: selectedCliente.nome || "Cliente JD",
                     email: selectedCliente.email || `${formattedPhone.replace(/\D/g, '')}@jdprotese.com`,
                     phoneNumber: formattedPhone,
-                    timeZone: "America/Sao_Paulo",
+                    timeZone: "America/Cuiaba",
                     language: "pt-BR"
                 },
-                location: {
-                    type: "phone",
-                    value: formattedPhone
-                },
+                location: locationPayload,
                 metadata: { 
                     supabase_id: selectedClienteId,
                     phone: formattedPhone
