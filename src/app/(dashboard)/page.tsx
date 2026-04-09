@@ -46,10 +46,15 @@ export default async function DashboardHome() {
 
   if (calApiKey) {
     try {
-      const res = await fetch(`https://api.cal.com/v1/bookings?apiKey=${calApiKey}`);
+      const res = await fetch(`https://api.cal.com/v2/bookings`, {
+        headers: {
+          "Authorization": `Bearer ${calApiKey}`,
+          "cal-api-version": "2024-08-13"
+        }
+      });
       const calData = await res.json();
-      if (calData.bookings) {
-        const bookingsData = calData.bookings;
+      const bookingsData = calData?.data || calData?.status === 'success' ? calData.data : calData.bookings;
+      if (bookingsData) {
 
         // Contar Agendamentos Confirmados para Hoje
         const todaysBookings = bookingsData.filter((b: any) => {

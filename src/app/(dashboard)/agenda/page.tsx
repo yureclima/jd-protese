@@ -27,6 +27,7 @@ import {
     DialogFooter
 } from "@/components/ui/dialog";
 import { createClient } from "@/lib/supabase/client";
+import { fetchEventTypes, fetchBookings, fetchSlots, createBooking, cancelBooking, rescheduleBooking } from "./cal-actions";
 
 interface EventType {
     id: number | string;
@@ -95,43 +96,31 @@ export default function AgendaPage() {
         if (!savedApiKey) return;
         setLoadingEvents(true);
         try {
-            const resEvents = await fetch(`https://api.cal.com/v1/event-types?apiKey=${savedApiKey}`);
-            const dataEvents = await resEvents.json();
+            const resEvents = await fetchEventTypes();
 
-            if (dataEvents && Array.isArray(dataEvents)) {
-                setEventTypes(dataEvents.filter((e: any) => !e.hidden).map((e: any) => ({
+            if (resEvents.data && Array.isArray(resEvents.data)) {
+                setEventTypes(resEvents.data.filter((e: any) => !e.hidden).map((e: any) => ({
                     id: e.id,
                     title: e.title,
-                    duration: e.length,
-                    price: e.price ? `R$ ${e.price / 100}` : "Padrão",
-                })));
-            } else if (dataEvents?.event_types) {
-                setEventTypes(dataEvents.event_types.filter((e: any) => !e.hidden).map((e: any) => ({
-                    id: e.id,
-                    title: e.title,
-                    duration: e.length,
+                    duration: e.length || e.lengthInMinutes || 30,
                     price: e.price ? `R$ ${e.price / 100}` : "Padrão",
                 })));
             }
 
-            const resBookings = await fetch(`https://api.cal.com/v1/bookings?apiKey=${savedApiKey}`);
-            const dataBookings = await resBookings.json();
-
+            const resBookings = await fetchBookings();
             let newBookings: Booking[] = [];
             const mapBooking = (b: any) => ({
                 id: b.id,
-                client: b.attendees?.[0]?.name || "Cliente",
+                client: b.attendees?.[0]?.name || b.responses?.name || "Cliente",
                 service: b.title || "Agendamento",
-                date: new Date(b.startTime),
+                date: new Date(b.startTime || b.start),
                 status: b.status === "ACCEPTED" ? "Confirmado" : b.status === "PENDING" ? "Pendente" : "Cancelado",
                 uid: b.uid,
                 eventTypeId: b.eventType?.id || b.eventTypeId
             });
 
-            if (dataBookings && Array.isArray(dataBookings)) {
-                newBookings = dataBookings.map(mapBooking);
-            } else if (dataBookings?.bookings) {
-                newBookings = dataBookings.bookings.map(mapBooking);
+            if (resBookings.data && Array.isArray(resBookings.data)) {
+                newBookings = resBookings.data.map(mapBooking);
             }
 
             newBookings.sort((a, b) => b.date.getTime() - a.date.getTime());
@@ -151,7 +140,7 @@ export default function AgendaPage() {
             setSlots([]);
             return;
         }
-        async function fetchSlots() {
+        async function loadSlots() {
             setLoadingSlots(true);
             try {
                 const startStr = new Date(selectedDate!);
@@ -159,14 +148,12 @@ export default function AgendaPage() {
                 const endStr = new Date(selectedDate!);
                 endStr.setHours(23, 59, 59, 999);
 
-                const url = `https://api.cal.com/v1/slots?apiKey=${savedApiKey}&eventTypeId=${selectedEventId}&startTime=${startStr.toISOString()}&endTime=${endStr.toISOString()}`;
-                const res = await fetch(url);
-                const data = await res.json();
+                const res = await fetchSlots(selectedEventId, startStr.toISOString(), endStr.toISOString());
 
-                if (data && data.slots) {
+                if (res.data) {
                     const dateKey = startStr.toISOString().split('T')[0];
-                    const daySlots = data.slots[dateKey] || [];
-                    const timeStrings = daySlots.map((s: any) => format(new Date(s.time), "HH:mm"));
+                    const daySlots = res.data[dateKey] || res.data || [];
+                    const timeStrings = Array.isArray(daySlots) ? daySlots.map((s: any) => format(new Date(s.time || s.slotTime || s), "HH:mm")) : [];
                     setSlots(timeStrings);
                 }
             } catch (err) {
@@ -175,7 +162,7 @@ export default function AgendaPage() {
             }
             setLoadingSlots(false);
         }
-        fetchSlots();
+        loadSlots();
     }, [savedApiKey, selectedEventId, selectedDate]);
 
     useEffect(() => {
@@ -191,14 +178,12 @@ export default function AgendaPage() {
                 const endStr = new Date(rescheduleDate!);
                 endStr.setHours(23, 59, 59, 999);
 
-                const url = `https://api.cal.com/v1/slots?apiKey=${savedApiKey}&eventTypeId=${bookingToReschedule!.eventTypeId}&startTime=${startStr.toISOString()}&endTime=${endStr.toISOString()}`;
-                const res = await fetch(url);
-                const data = await res.json();
+                const res = await fetchSlots(bookingToReschedule?.eventTypeId?.toString() || "", startStr.toISOString(), endStr.toISOString());
 
-                if (data && data.slots) {
+                if (res.data) {
                     const dateKey = startStr.toISOString().split('T')[0];
-                    const daySlots = data.slots[dateKey] || [];
-                    const timeStrings = daySlots.map((s: any) => format(new Date(s.time), "HH:mm"));
+                    const daySlots = res.data[dateKey] || res.data || [];
+                    const timeStrings = Array.isArray(daySlots) ? daySlots.map((s: any) => format(new Date(s.time || s.slotTime || s), "HH:mm")) : [];
                     setRescheduleSlots(timeStrings);
                 }
             } catch (err) {
@@ -249,20 +234,15 @@ export default function AgendaPage() {
                 language: "pt-BR"
             };
 
-            const response = await fetch(`https://api.cal.com/v1/bookings?apiKey=${savedApiKey}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
+            const response = await createBooking(payload);
 
-            if (response.ok) {
+            if (!response.error) {
                 toast.success(`Agendamento realizado com sucesso para ${format(selectedDate, "dd/MM")} às ${selectedTimeSlot}!`);
                 setSelectedTimeSlot(null);
                 loadData();
             } else {
-                const errorData = await response.json();
-                console.error("Erro Cal.com:", errorData);
-                toast.error(`Erro ao agendar: ${errorData.message || 'Verifique as configurações'}`);
+                console.error("Erro Cal.com:", response.error);
+                toast.error(`Erro ao agendar: ${response.error || 'Verifique as configurações'}`);
             }
         } catch (err) {
             console.error("Erro de conexão com a API do Cal.com", err);
@@ -275,37 +255,13 @@ export default function AgendaPage() {
         if (!savedApiKey || !bookingToCancel?.uid) return;
         setIsCanceling(bookingToCancel.id.toString());
         try {
-            const url = `https://api.cal.com/v2/bookings/${bookingToCancel.uid}/cancel`;
             const payload = {
                 cancellationReason: "Cancelado pelo painel gerencial JD",
                 cancelSubsequentBookings: true
             };
-            const res = await fetch(url, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "cal-api-version": "2024-08-13",
-                    "Authorization": `Bearer ${savedApiKey}`
-                },
-                body: JSON.stringify(payload)
-            });
+            const response = await cancelBooking(bookingToCancel.uid.toString(), payload);
 
-            if (!res.ok && res.status === 401) {
-                const urlV1 = `https://api.cal.com/v1/bookings/${bookingToCancel.id}/cancel?apiKey=${savedApiKey}`;
-                const resV1 = await fetch(urlV1, {
-                    method: "DELETE",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ reason: "Cancelado pelo gestor no JD Painel" })
-                });
-                if (resV1.ok) {
-                    setBookings(prev => prev.map(b => b.id === bookingToCancel.id ? { ...b, status: "Cancelado" } : b));
-                    setBookingToCancel(null);
-                    setIsCanceling(null);
-                    return;
-                }
-            }
-
-            if (res.ok) {
+            if (!response.error) {
                 setBookings(prev => prev.map(b => b.id === bookingToCancel.id ? { ...b, status: "Cancelado" } : b));
                 toast.success("Agendamento cancelado com sucesso.");
             } else {
@@ -327,45 +283,20 @@ export default function AgendaPage() {
             const startDateTime = new Date(rescheduleDate);
             startDateTime.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
 
-            const url = `https://api.cal.com/v2/bookings/${bookingToReschedule.uid}/reschedule`;
             const payload = {
                 start: startDateTime.toISOString(),
                 reschedulingReason: "Reagendado pelo painel gerencial JD"
             };
 
-            const res = await fetch(url, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "cal-api-version": "2024-08-13",
-                    "Authorization": `Bearer ${savedApiKey}`
-                },
-                body: JSON.stringify(payload)
-            });
+            const response = await rescheduleBooking(bookingToReschedule.uid.toString(), payload);
 
-            if (res.ok) {
+            if (!response.error) {
                 toast.success("Reagendamento concluído com sucesso!");
                 setBookingToReschedule(null);
                 setRescheduleTimeSlot(null);
                 loadData();
             } else {
-                const resV2Fallback = await fetch(`${url}?apiKey=${savedApiKey}`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "cal-api-version": "2024-08-13"
-                    },
-                    body: JSON.stringify(payload)
-                });
-
-                if (resV2Fallback.ok) {
-                    toast.success("Reagendamento concluído com sucesso!");
-                    setBookingToReschedule(null);
-                    setRescheduleTimeSlot(null);
-                    loadData();
-                } else {
-                    toast.error("Não foi possível reagendar esse booking.");
-                }
+                toast.error("Não foi possível reagendar esse booking.");
             }
         } catch (err) {
             toast.error("Erro de rede ao reagendar.");
