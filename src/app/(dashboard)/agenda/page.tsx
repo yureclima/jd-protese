@@ -97,17 +97,29 @@ export default function AgendaPage() {
         setLoadingEvents(true);
         try {
             const resEvents = await fetchEventTypes();
+            if (resEvents.error) {
+                toast.error(`Erro ao carregar serviços: ${resEvents.error}`);
+            }
 
-            if (resEvents.data && Array.isArray(resEvents.data)) {
-                setEventTypes(resEvents.data.filter((e: any) => !e.hidden).map((e: any) => ({
+            // Flexibilidade para Cal.com V2 ou fallback V1
+            const rawEvents = resEvents.data?.eventTypes || resEvents.data?.event_types || (Array.isArray(resEvents.data) ? resEvents.data : null);
+
+            if (rawEvents && Array.isArray(rawEvents)) {
+                setEventTypes(rawEvents.filter((e: any) => !e.hidden).map((e: any) => ({
                     id: e.id,
-                    title: e.title,
-                    duration: e.length || e.lengthInMinutes || 30,
-                    price: e.price ? `R$ ${e.price / 100}` : "Padrão",
+                    title: e.title || e.name || "Serviço",
+                    duration: e.length || e.lengthInMinutes || e.duration || 30,
+                    price: (e.price !== undefined && e.price !== null) ? `R$ ${e.price / 100}` : "Padrão",
                 })));
+            } else {
+                console.warn("Formato de serviços não reconhecido:", resEvents.data);
             }
 
             const resBookings = await fetchBookings();
+            if (resBookings.error) {
+                toast.error(`Erro ao carregar agendamentos: ${resBookings.error}`);
+            }
+
             let newBookings: Booking[] = [];
             const mapBooking = (b: any) => ({
                 id: b.id,
@@ -119,14 +131,18 @@ export default function AgendaPage() {
                 eventTypeId: b.eventType?.id || b.eventTypeId
             });
 
-            if (resBookings.data && Array.isArray(resBookings.data)) {
-                newBookings = resBookings.data.map(mapBooking);
+            // Flexibilidade para lista de bookings
+            const rawBookings = resBookings.data?.bookings || (Array.isArray(resBookings.data) ? resBookings.data : null);
+
+            if (rawBookings && Array.isArray(rawBookings)) {
+                newBookings = rawBookings.map(mapBooking);
             }
 
             newBookings.sort((a, b) => b.date.getTime() - a.date.getTime());
             setBookings(newBookings);
         } catch (err) {
             console.error("Erro ao carregar dados do Cal.com", err);
+            toast.error("Erro inesperado ao sincronizar com Cal.com");
         }
         setLoadingEvents(false);
     };
