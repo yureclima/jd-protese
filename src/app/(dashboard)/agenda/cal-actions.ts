@@ -155,7 +155,8 @@ export async function createBooking(payload: any) {
       
       const data = await res.json();
       if (!res.ok) {
-          throw new Error(data.message || `Failed to create booking`);
+          const errorMsg = data.error?.message || data.message || JSON.stringify(data);
+          throw new Error(errorMsg || `Failed to create booking`);
       }
       return { data: data?.data || data };
     } catch (error: any) {
@@ -181,7 +182,8 @@ export async function cancelBooking(uid: string, payload: any) {
       
       const data = await res.json();
       if (!res.ok) {
-          throw new Error(data.message || `Failed to cancel booking`);
+          const errorMsg = data.error?.message || data.message || JSON.stringify(data);
+          throw new Error(errorMsg || `Failed to cancel booking`);
       }
       return { data: data?.data || data };
     } catch (error: any) {
@@ -207,7 +209,8 @@ export async function rescheduleBooking(uid: string, payload: any) {
       
       const data = await res.json();
       if (!res.ok) {
-          throw new Error(data.message || `Failed to reschedule booking`);
+          const errorMsg = data.error?.message || data.message || JSON.stringify(data);
+          throw new Error(errorMsg || `Failed to reschedule booking`);
       }
       return { data: data?.data || data };
     } catch (error: any) {

@@ -264,11 +264,13 @@ export default function AgendaPage() {
                 attendee: {
                     name: selectedCliente.nome || "Cliente JD",
                     email: selectedCliente.email || `${formattedPhone.replace(/\D/g, '')}@jdprotese.com`,
+                    phoneNumber: formattedPhone,
                     timeZone: "America/Sao_Paulo",
                     language: "pt-BR"
                 },
                 location: {
-                    type: "phone"
+                    type: "phone",
+                    value: formattedPhone
                 },
                 metadata: { 
                     supabase_id: selectedClienteId,
