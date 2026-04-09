@@ -60,7 +60,7 @@ export async function fetchBookings() {
   if (!apiKey) return { error: "API Key não encontrada" };
 
   try {
-    const res = await fetch(`https://api.cal.com/v2/bookings?take=100`, {
+    const res = await fetch(`https://api.cal.com/v2/bookings?take=200&sortStart=desc`, {
       headers: {
         "Authorization": `Bearer ${apiKey}`,
         "cal-api-version": "2024-08-13"

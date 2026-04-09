@@ -46,7 +46,7 @@ export default async function DashboardHome() {
 
   if (calApiKey) {
     try {
-      let res = await fetch(`https://api.cal.com/v2/bookings?take=100`, {
+      let res = await fetch(`https://api.cal.com/v2/bookings?take=200&sortStart=desc`, {
         headers: {
           "Authorization": `Bearer ${calApiKey}`,
           "cal-api-version": "2024-08-13"
@@ -63,13 +63,25 @@ export default async function DashboardHome() {
       const bookingsData = Array.isArray(calData?.data) ? calData.data : 
                            Array.isArray(calData?.bookings) ? calData.bookings : 
                            Array.isArray(calData) ? calData : null;
+                           
+      try {
+        const fs = require('fs');
+        fs.writeFileSync('C:\\Users\\yuric\\Downloads\\jdprotese\\webapp\\debug-cal.json', JSON.stringify({ raw: calData, parsed: bookingsData }, null, 2));
+      } catch(e) {}
+
       if (bookingsData) {
+
+        // Helper para checar "Hoje" baseando-se no fuso do Brasil, ignorando a UTC da Vercel
+        const getBrDateStr = (d: Date | number) => 
+            Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Cuiaba', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+        const todayBrStr = getBrDateStr(new Date());
 
         // Contar Agendamentos Confirmados para Hoje
         const todaysBookings = bookingsData.filter((b: any) => {
           const st = b.status?.toUpperCase();
           if (st !== "ACCEPTED" && st !== "PENDING") return false;
-          return isToday(parseISO(b.start || b.startTime));
+          const bookingDateObj = new Date(b.start || b.startTime);
+          return getBrDateStr(bookingDateObj) === todayBrStr;
         });
         agendamentosHojeCount = todaysBookings.length;
         if (agendamentosHojeCount > 0) {
@@ -80,13 +92,15 @@ export default async function DashboardHome() {
         const futureBookings = bookingsData.filter((b: any) => {
           const st = b.status?.toUpperCase();
           if (st !== "ACCEPTED" && st !== "PENDING") return false;
-          return isFuture(parseISO(b.start || b.startTime)) || isToday(parseISO(b.start || b.startTime));
+          const bookingDateObj = new Date(b.start || b.startTime);
+          const bdStr = getBrDateStr(bookingDateObj);
+          return bookingDateObj.getTime() > new Date().getTime() || bdStr === todayBrStr;
         }).sort((a: any, b: any) => parseISO(a.start || a.startTime).getTime() - parseISO(b.start || b.startTime).getTime())
           .slice(0, 5);
 
         bookingsDisplay = futureBookings.map((b: any) => {
-          const dateObj = parseISO(b.start || b.startTime);
-          const isHoje = isToday(dateObj);
+          const dateObj = new Date(b.start || b.startTime);
+          const isHoje = getBrDateStr(dateObj) === todayBrStr;
 
           let dateStr = "";
           if (isHoje) {
