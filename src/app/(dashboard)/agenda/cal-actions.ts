@@ -153,10 +153,13 @@ export async function createBooking(payload: any) {
         body: JSON.stringify(payload)
       });
       
-      const data = await res.json();
+      const textRes = await res.text();
+      let data: any = {};
+      try { data = textRes ? JSON.parse(textRes) : {}; } catch(e) {}
+      
       if (!res.ok) {
-          const errorMsg = data.error?.message || data.message || JSON.stringify(data);
-          throw new Error(errorMsg || `Failed to create booking`);
+          const errorMsg = data.error?.message || data.message || `Failed to create booking (Status ${res.status})`;
+          throw new Error(errorMsg);
       }
       return { data: data?.data || data };
     } catch (error: any) {
@@ -180,10 +183,13 @@ export async function cancelBooking(uid: string, payload: any) {
         body: JSON.stringify(payload)
       });
       
-      const data = await res.json();
+      const textRes = await res.text();
+      let data: any = {};
+      try { data = textRes ? JSON.parse(textRes) : {}; } catch(e) {}
+      
       if (!res.ok) {
-          const errorMsg = data.error?.message || data.message || JSON.stringify(data);
-          throw new Error(errorMsg || `Failed to cancel booking`);
+          const errorMsg = data.error?.message || data.message || `Failed to cancel booking (Status ${res.status})`;
+          throw new Error(errorMsg);
       }
       return { data: data?.data || data };
     } catch (error: any) {
@@ -207,10 +213,13 @@ export async function rescheduleBooking(uid: string, payload: any) {
         body: JSON.stringify(payload)
       });
       
-      const data = await res.json();
+      const textRes = await res.text();
+      let data: any = {};
+      try { data = textRes ? JSON.parse(textRes) : {}; } catch(e) {}
+      
       if (!res.ok) {
-          const errorMsg = data.error?.message || data.message || JSON.stringify(data);
-          throw new Error(errorMsg || `Failed to reschedule booking`);
+          const errorMsg = data.error?.message || data.message || `Failed to reschedule booking (Status ${res.status})`;
+          throw new Error(errorMsg);
       }
       return { data: data?.data || data };
     } catch (error: any) {
